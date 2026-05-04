@@ -24,6 +24,23 @@ textarea {
   grid-template-columns: 320px 1fr;
 }
 
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #eef2f6;
+}
+
+.auth-panel {
+  width: min(100%, 420px);
+  background: #ffffff;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 18px 45px rgba(24, 32, 47, 0.08);
+}
+
 .sidebar {
   background: #101722;
   color: #f7fafc;
@@ -51,7 +68,17 @@ textarea {
   margin-top: 2px;
 }
 
+.auth-brand {
+  color: #18202f;
+  margin-bottom: 24px;
+}
+
+.auth-brand span {
+  color: #667085;
+}
+
 .refresh,
+.mode-switch,
 .post-link,
 .votes button,
 form button {
@@ -140,6 +167,32 @@ h1 {
   text-decoration: none;
 }
 
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-menu span {
+  color: #465264;
+  font-weight: 700;
+}
+
+.user-menu button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: #e7edf5;
+  color: #18202f;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -222,6 +275,10 @@ form {
   gap: 12px;
 }
 
+.auth-form {
+  margin-bottom: 12px;
+}
+
 .comment-form {
   margin-top: 20px;
 }
@@ -253,6 +310,20 @@ form button {
   font-weight: 800;
 }
 
+.mode-switch {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 8px;
+  background: #e7edf5;
+  color: #18202f;
+  font-weight: 800;
+}
+
+.form-status {
+  color: #b42318;
+  font-size: 14px;
+}
+
 .empty {
   color: #667085;
 }
@@ -268,6 +339,11 @@ form button {
   }
 
   .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .user-menu {
     align-items: flex-start;
     flex-direction: column;
   }

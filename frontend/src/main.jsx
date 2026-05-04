@@ -1,14 +1,31 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MessageCircle, Plus, RefreshCcw, Send, Server, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  LogIn,
+  LogOut,
+  MessageCircle,
+  Plus,
+  RefreshCcw,
+  Send,
+  Server,
+  ThumbsDown,
+  ThumbsUp,
+  UserPlus
+} from "lucide-react";
 import "./styles.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const TOKEN_KEY = "forum_token";
 
-async function request(path, options) {
+async function request(path, options = {}) {
+  const token = localStorage.getItem(TOKEN_KEY);
   const response = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers
+    }
   });
 
   if (!response.ok) {
@@ -24,8 +41,12 @@ function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
   const [status, setStatus] = useState("Carregando forum...");
-  const [form, setForm] = useState({ title: "", author: "", content: "" });
-  const [comment, setComment] = useState({ author: "", content: "" });
+  const [user, setUser] = useState(null);
+  const [authMode, setAuthMode] = useState("login");
+  const [authStatus, setAuthStatus] = useState("");
+  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ title: "", content: "" });
+  const [comment, setComment] = useState({ content: "" });
 
   const selectedSummary = useMemo(
     () => posts.find((post) => post.id === selectedId),
@@ -54,6 +75,17 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!localStorage.getItem(TOKEN_KEY)) return;
+
+    request("/api/auth/me")
+      .then((data) => setUser(data.user))
+      .catch(() => {
+        localStorage.removeItem(TOKEN_KEY);
+        setUser(null);
+      });
+  }, []);
+
+  useEffect(() => {
     loadPost(selectedId).catch((error) => setStatus(error.message));
   }, [selectedId]);
 
@@ -63,7 +95,7 @@ function App() {
       method: "POST",
       body: JSON.stringify(form)
     });
-    setForm({ title: "", author: "", content: "" });
+    setForm({ title: "", content: "" });
     await loadPosts();
   }
 
@@ -84,9 +116,96 @@ function App() {
       method: "POST",
       body: JSON.stringify(comment)
     });
-    setComment({ author: "", content: "" });
+    setComment({ content: "" });
     await loadPost(selectedId);
     await loadPosts();
+  }
+
+  async function authenticate(event) {
+    event.preventDefault();
+    setAuthStatus("Validando acesso...");
+    const path = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
+    const payload =
+      authMode === "login"
+        ? { email: authForm.email, password: authForm.password }
+        : authForm;
+
+    try {
+      const data = await request(path, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      localStorage.setItem(TOKEN_KEY, data.token);
+      setUser(data.user);
+      setAuthForm({ name: "", email: "", password: "" });
+      setAuthStatus("");
+    } catch (error) {
+      setAuthStatus(error.message);
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem(TOKEN_KEY);
+    setUser(null);
+  }
+
+  if (!user) {
+    return (
+      <main className="auth-page">
+        <section className="auth-panel">
+          <div className="brand auth-brand">
+            <Server size={26} />
+            <div>
+              <strong>Forum Distribuido</strong>
+              <span>Acesse para postar, comentar e votar</span>
+            </div>
+          </div>
+
+          <form className="auth-form" onSubmit={authenticate}>
+            <div className="form-title">
+              {authMode === "login" ? <LogIn size={18} /> : <UserPlus size={18} />}
+              <strong>{authMode === "login" ? "Entrar" : "Criar conta"}</strong>
+            </div>
+
+            {authMode === "register" && (
+              <input
+                placeholder="Nome"
+                value={authForm.name}
+                onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })}
+              />
+            )}
+            <input
+              placeholder="Email"
+              type="email"
+              value={authForm.email}
+              onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })}
+            />
+            <input
+              placeholder="Senha"
+              type="password"
+              value={authForm.password}
+              onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })}
+            />
+
+            {authStatus && <p className="form-status">{authStatus}</p>}
+            <button type="submit">
+              {authMode === "login" ? <LogIn size={18} /> : <UserPlus size={18} />}
+              {authMode === "login" ? "Entrar" : "Cadastrar"}
+            </button>
+          </form>
+
+          <button
+            className="mode-switch"
+            onClick={() => {
+              setAuthMode(authMode === "login" ? "register" : "login");
+              setAuthStatus("");
+            }}
+          >
+            {authMode === "login" ? "Criar uma nova conta" : "Ja tenho uma conta"}
+          </button>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -125,7 +244,11 @@ function App() {
             <span className="eyebrow">React + Node + Postgres</span>
             <h1>Forum para demonstrar sistemas distribuidos</h1>
           </div>
-          <a href={`${API_URL}/health`} target="_blank" rel="noreferrer">Health check</a>
+          <div className="user-menu">
+            <span>Ola, {user.name}</span>
+            <a href={`${API_URL}/health`} target="_blank" rel="noreferrer">Health check</a>
+            <button onClick={logout} title="Sair"><LogOut size={18} /> Sair</button>
+          </div>
         </header>
 
         <div className="workspace">
@@ -160,13 +283,8 @@ function App() {
                 </div>
 
                 <form className="comment-form" onSubmit={createComment}>
-                  <input
-                    placeholder="Seu nome"
-                    value={comment.author}
-                    onChange={(event) => setComment({ ...comment, author: event.target.value })}
-                  />
                   <textarea
-                    placeholder="Escreva um comentario"
+                    placeholder={`Comentar como ${user.name}`}
                     value={comment.content}
                     onChange={(event) => setComment({ ...comment, content: event.target.value })}
                   />
@@ -188,13 +306,8 @@ function App() {
               value={form.title}
               onChange={(event) => setForm({ ...form, title: event.target.value })}
             />
-            <input
-              placeholder="Autor"
-              value={form.author}
-              onChange={(event) => setForm({ ...form, author: event.target.value })}
-            />
             <textarea
-              placeholder="Conteudo"
+              placeholder={`Conteudo por ${user.name}`}
               value={form.content}
               onChange={(event) => setForm({ ...form, content: event.target.value })}
             />

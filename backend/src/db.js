@@ -39,8 +39,10 @@ let posts = [
 ];
 
 let comments = [];
+let users = [];
 let nextPostId = 4;
 let nextCommentId = 1;
+let nextUserId = 1;
 
 export async function migrate() {
   if (useMemoryDatabase) return;
@@ -52,6 +54,16 @@ export async function migrate() {
       author VARCHAR(80) NOT NULL,
       content TEXT NOT NULL,
       votes INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(80) NOT NULL,
+      email VARCHAR(160) NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
@@ -205,4 +217,54 @@ export async function votePost({ postId, direction }) {
     [voteChange, postId]
   );
   return rows[0] || null;
+}
+
+export async function createUser({ name, email, passwordHash }) {
+  if (useMemoryDatabase) {
+    const existingUser = users.find((user) => user.email === email);
+    if (existingUser) {
+      const error = new Error("Email ja cadastrado");
+      error.code = "USER_EXISTS";
+      throw error;
+    }
+
+    const user = {
+      id: nextUserId++,
+      name,
+      email,
+      password_hash: passwordHash,
+      created_at: new Date().toISOString()
+    };
+    users.push(user);
+    return sanitizeUser(user);
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO users (name, email, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id, name, email, created_at`,
+      [name, email, passwordHash]
+    );
+    return rows[0];
+  } catch (error) {
+    if (error.code === "23505") {
+      error.code = "USER_EXISTS";
+    }
+    throw error;
+  }
+}
+
+export async function findUserByEmail(email) {
+  if (useMemoryDatabase) {
+    return users.find((user) => user.email === email) || null;
+  }
+
+  const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+  return rows[0] || null;
+}
+
+function sanitizeUser(user) {
+  const { password_hash, ...safeUser } = user;
+  return safeUser;
 }

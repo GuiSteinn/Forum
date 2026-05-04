@@ -8,6 +8,7 @@ Projeto simples de forum online feito com React, Node.js, Express e PostgreSQL. 
 - Criacao de novos posts.
 - Votos positivos e negativos.
 - Comentarios por post.
+- Login simples com cadastro de usuario.
 - Persistencia em PostgreSQL.
 - Endpoint de saude em `/health`.
 - Frontend e backend empacotados com Docker.
@@ -164,18 +165,30 @@ Os Services `frontend-lb` e `backend-lb` devem receber um `EXTERNAL-IP` ou hostn
 ## Endpoints da API
 
 - `GET /health`: verifica se backend e banco estao saudaveis.
+- `POST /api/auth/register`: cria usuario e retorna token.
+- `POST /api/auth/login`: autentica usuario e retorna token.
+- `GET /api/auth/me`: valida o token enviado no header `Authorization`.
 - `GET /api/posts`: lista posts.
 - `GET /api/posts/:id`: busca post com comentarios.
-- `POST /api/posts`: cria post.
-- `POST /api/posts/:id/comments`: cria comentario.
-- `POST /api/posts/:id/vote`: vota em um post.
+- `POST /api/posts`: cria post, exige login.
+- `POST /api/posts/:id/comments`: cria comentario, exige login.
+- `POST /api/posts/:id/vote`: vota em um post, exige login.
+
+Exemplo de cadastro:
+
+```json
+{
+  "name": "Aluno",
+  "email": "aluno@example.com",
+  "password": "123456"
+}
+```
 
 Exemplo de criacao de post:
 
 ```json
 {
   "title": "Meu primeiro post",
-  "author": "Aluno",
   "content": "Conteudo do post"
 }
 ```
