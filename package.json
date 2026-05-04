@@ -1,0 +1,18 @@
+{
+  "name": "forum-distribuido",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Forum simples em React e Node para demonstrar uma arquitetura distribuida com Kubernetes e AWS.",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
+    "build": "npm run build --workspace frontend",
+    "start": "npm run start --workspace backend"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
