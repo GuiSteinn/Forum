@@ -8,26 +8,28 @@ stringData:
   POSTGRES_DB: forum
   POSTGRES_USER: forum
   POSTGRES_PASSWORD: forum
-  DATABASE_URL: postgres://forum:forum@postgres:5432/forum
+  DATABASE_URL: postgres://forum:forum@postgres.forum.svc.cluster.local:5432/forum
 ---
 apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-data
-  namespace: forum
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
----
-apiVersion: apps/v1
-kind: Deployment
+kind: Service
 metadata:
   name: postgres
   namespace: forum
 spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: forum
+spec:
+  serviceName: postgres
   replicas: 1
   selector:
     matchLabels:
@@ -37,6 +39,18 @@ spec:
       labels:
         app: postgres
     spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
       containers:
         - name: postgres
           image: postgres:16-alpine
@@ -45,23 +59,28 @@ spec:
           envFrom:
             - secretRef:
                 name: postgres-secret
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: postgres-data
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgres
-  namespace: forum
-spec:
-  type: ClusterIP
-  selector:
-    app: postgres
-  ports:
-    - port: 5432
-      targetPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "forum", "-d", "forum"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "forum", "-d", "forum"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi

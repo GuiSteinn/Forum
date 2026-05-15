@@ -13,6 +13,13 @@ spec:
       labels:
         app: backend
     spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: backend
       containers:
         - name: backend
           image: SEU_REGISTRY/forum-backend:1.0.0
@@ -24,6 +31,25 @@ spec:
               value: "3001"
             - name: CORS_ORIGIN
               value: "*"
+            - name: DB_HOST
+              value: "postgres.forum.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -45,15 +71,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend-lb
+  name: backend
   namespace: forum
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: backend
   ports:
     - name: http
-      port: 80
+      port: 3001
       targetPort: 3001
+      nodePort: 30081
