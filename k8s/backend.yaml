@@ -22,7 +22,7 @@ spec:
               app: backend
       containers:
         - name: backend
-          image: SEU_REGISTRY/forum-backend:1.0.0
+          image: felipemacedok/forum-backend:1.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3001

@@ -22,7 +22,7 @@ spec:
               app: frontend
       containers:
         - name: frontend
-          image: SEU_REGISTRY/forum-frontend:1.0.0
+          image: felipemacedok/forum-frontend:1.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
